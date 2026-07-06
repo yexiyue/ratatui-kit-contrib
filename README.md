@@ -28,7 +28,7 @@ Each crate here:
 - is **independently versioned** and **independently published** to crates.io as
   `ratatui-kit-<name>` (e.g. `ratatui-kit-markdown`);
 - depends on the framework through the public [Extension API](https://github.com/yexiyue/ratatui-kit/blob/main/EXTENSION_API.md)
-  with a version **range** (`ratatui-kit = ">=0.7, <0.8"`), reaching `ratatui` /
+  with a version **range** (`ratatui-kit = ">=0.8, <0.9"`), reaching `ratatui` /
   `crossterm` types via `ratatui_kit::ratatui` / `ratatui_kit::crossterm` rather than a
   direct dependency;
 - lives in its own directory under [`crates/`](./crates/) and is released by pushing a
