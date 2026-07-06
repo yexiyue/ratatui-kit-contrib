@@ -1,0 +1,27 @@
+[workspace]
+resolver = "3"
+# Member crates are added here as they are migrated / created, one directory per
+# crate, e.g. "crates/ratatui-kit-markdown". Each crate is independently versioned
+# and published to crates.io as `ratatui-kit-<name>`.
+members = [
+    # "crates/ratatui-kit-markdown",
+]
+
+# Shared metadata every member crate can inherit with `field.workspace = true`.
+# Keeping it here means one place to bump the license year, repo URL, or edition.
+[workspace.package]
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/yexiyue/ratatui-kit-contrib"
+authors = ["yexiyue"]
+rust-version = "1.85"
+
+# Shared dependency pins. Member crates depend on the framework with a version
+# range (see EXTENSION_API.md's stability policy) so a semver-minor of the
+# framework does not silently break an extension crate:
+#   ratatui-kit = { workspace = true }
+#
+# Reach `ratatui` / `crossterm` types through `ratatui_kit::ratatui` /
+# `ratatui_kit::crossterm`; do NOT add a direct `ratatui` dependency.
+[workspace.dependencies]
+ratatui-kit = ">=0.7, <0.8"

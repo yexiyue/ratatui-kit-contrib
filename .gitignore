@@ -1,0 +1,10 @@
+/target
+
+# This is a library workspace — every member crate publishes as a library, so we
+# do not commit the resolved lockfile (let downstream consumers pick versions).
+Cargo.lock
+
+# Editor / OS noise
+.idea
+.vscode
+.DS_Store

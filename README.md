@@ -1,0 +1,105 @@
+<div align="center">
+
+# Ratatui Kit Contrib
+
+**The official monorepo for first-party [`ratatui-kit`](https://github.com/yexiyue/ratatui-kit) extension crates.**
+
+[![CI](https://github.com/yexiyue/ratatui-kit-contrib/actions/workflows/ci.yml/badge.svg)](https://github.com/yexiyue/ratatui-kit-contrib/actions/workflows/ci.yml)
+[![ratatui-kit](https://img.shields.io/crates/v/ratatui-kit?logo=rust&color=E43717&label=ratatui-kit)](https://crates.io/crates/ratatui-kit)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](./LICENSE)
+
+**[Main framework](https://github.com/yexiyue/ratatui-kit)** ·
+**[Author contract](https://github.com/yexiyue/ratatui-kit/blob/main/COMPONENT_GUIDE.md)** ·
+**[Extension API](https://github.com/yexiyue/ratatui-kit/blob/main/EXTENSION_API.md)** ·
+**[awesome-ratatui-kit](https://github.com/yexiyue/awesome-ratatui-kit)**
+
+</div>
+
+---
+
+## Overview
+
+This is the home for **official** `ratatui-kit-<name>` component crates — extensions
+maintained alongside the framework but shipped as their own packages. If you want to
+build UIs with the framework itself, start at the [main repository](https://github.com/yexiyue/ratatui-kit).
+
+Each crate here:
+
+- is **independently versioned** and **independently published** to crates.io as
+  `ratatui-kit-<name>` (e.g. `ratatui-kit-markdown`);
+- depends on the framework through the public [Extension API](https://github.com/yexiyue/ratatui-kit/blob/main/EXTENSION_API.md)
+  with a version **range** (`ratatui-kit = ">=0.7, <0.8"`), reaching `ratatui` /
+  `crossterm` types via `ratatui_kit::ratatui` / `ratatui_kit::crossterm` rather than a
+  direct dependency;
+- lives in its own directory under [`crates/`](./crates/) and is released by pushing a
+  per-crate tag `ratatui-kit-<name>-v<version>`.
+
+Community (non-official) crates do **not** need to live here — publish them anywhere and
+list them in [awesome-ratatui-kit](https://github.com/yexiyue/awesome-ratatui-kit).
+This monorepo exists so the crates the core team maintains stay in lockstep with the
+framework's release cadence and quality bar.
+
+---
+
+## Crates
+
+| Crate | Description | Version | Feature-gated deps |
+| --- | --- | --- | --- |
+| _(none yet)_ | Member crates such as `ratatui-kit-markdown` are migrated in here | — | — |
+
+> As crates land, add a row here and a member entry in the workspace
+> [`Cargo.toml`](./Cargo.toml).
+
+---
+
+## Repository layout
+
+```text
+ratatui-kit-contrib/
+├── Cargo.toml           # [workspace] resolver = "3"; members added per crate
+├── cliff.toml           # per-crate tag-prefix aware CHANGELOG config
+├── rustfmt.toml         # tab_spaces = 4
+├── .github/workflows/   # fmt · clippy -D warnings · test · doc, workspace-wide
+└── crates/
+    └── ratatui-kit-<name>/   # one directory per official extension crate
+```
+
+---
+
+## Contributing a crate
+
+Official extension crates are held to the same quality bar as the framework: the
+[**author contract**](https://github.com/yexiyue/ratatui-kit/blob/main/COMPONENT_GUIDE.md).
+In short:
+
+- **Depend only on the [Extension API surface](https://github.com/yexiyue/ratatui-kit/blob/main/EXTENSION_API.md)**;
+  reach `ratatui` / `crossterm` through `ratatui_kit::*`, never a direct dependency.
+- **Feature-gate heavy dependencies** (`optional = true` + a feature); keep default
+  features minimal so `cargo add ratatui-kit-<name>` stays light.
+- **English** panic / expect / error messages shown to library users.
+- **Layout props go on the returned root element** for `#[component]` functions
+  (transparent-layout wrappers do not own a layout node).
+- **Compile baseline**: all examples and doctests must compile — it is the CI gate.
+- Publish as `ratatui-kit-<name>` with `keywords = ["ratatui-kit", "tui"]` and pin the
+  framework with a version range.
+
+Run the same validation matrix CI uses before opening a PR:
+
+```bash
+cargo fmt --all --check
+cargo clippy --all-targets --all-features --workspace -- -D warnings
+cargo test --all-features --workspace --lib --tests --examples
+RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --document-private-items --all-features --workspace --examples
+```
+
+### Releasing
+
+Bump the crate's version → commit → tag `ratatui-kit-<name>-v<version>` → push the tag.
+CI runs `cargo publish` for that crate and generates its CHANGELOG with
+[git-cliff](https://git-cliff.org/) using the per-crate tag prefix (see [`cliff.toml`](./cliff.toml)).
+
+---
+
+## License
+
+Released under the [MIT License](./LICENSE).
