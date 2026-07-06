@@ -4,7 +4,7 @@ resolver = "3"
 # crate, e.g. "crates/ratatui-kit-markdown". Each crate is independently versioned
 # and published to crates.io as `ratatui-kit-<name>`.
 members = [
-    # "crates/ratatui-kit-markdown",
+    "crates/ratatui-kit-markdown",
 ]
 
 # Shared metadata every member crate can inherit with `field.workspace = true`.

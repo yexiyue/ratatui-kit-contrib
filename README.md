@@ -45,7 +45,7 @@ framework's release cadence and quality bar.
 
 | Crate | Description | Version | Feature-gated deps |
 | --- | --- | --- | --- |
-| _(none yet)_ | Member crates such as `ratatui-kit-markdown` are migrated in here | — | — |
+| [`ratatui-kit-markdown`](./crates/ratatui-kit-markdown) | Markdown, code block, diff, blockquote and divider components | `0.1.0` | `pulldown-cmark` (`markdown`), `syntect` (`highlight`), `similar` (`diff`) |
 
 > As crates land, add a row here and a member entry in the workspace
 > [`Cargo.toml`](./Cargo.toml).

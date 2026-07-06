@@ -1,0 +1,73 @@
+[package]
+name = "ratatui-kit-markdown"
+version = "0.1.0"
+description = "Markdown, code block, diff, blockquote and divider components for ratatui-kit"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+readme = "README.md"
+# `ratatui-kit` keeps the crate discoverable in the ecosystem; `markdown` / `tui`
+# describe what it does.
+keywords = ["ratatui-kit", "markdown", "tui"]
+categories = ["command-line-interface", "text-processing"]
+
+[dependencies]
+# NOTE: the local `path` dependency is ONLY for validating this crate before the
+# framework's 0.8.0 (with the frozen Extension API surface) is published. When
+# publishing to crates.io, replace it with a version RANGE that matches the
+# Extension API surface you build against (see EXTENSION_API.md):
+#
+#   ratatui-kit = { version = ">=0.8, <0.9", features = ["table"] }
+#
+# `features = ["table"]` pulls in the core `Table` component that the Markdown
+# renderer reuses. Reach `ratatui` / `crossterm` types via `ratatui_kit::ratatui`
+# / `ratatui_kit::crossterm` — never a direct `ratatui` dependency.
+ratatui-kit = { version = ">=0.8, <0.9", features = [
+    "table",
+] }
+
+# Heavy dependencies are optional and feature-gated so `cargo add
+# ratatui-kit-markdown` stays light (see [features] below).
+pulldown-cmark = { version = "0.12", optional = true, default-features = false }
+syntect = { version = "5", optional = true, default-features = false, features = [
+    "parsing",
+    "default-syntaxes",
+    "default-themes",
+    "regex-fancy",
+] }
+similar = { version = "2", optional = true }
+unicode-width = { version = "0.2", optional = true }
+
+[dev-dependencies]
+# Examples use `#[tokio::main]` + `tokio::time::sleep`; doctests use `#[tokio::main]`.
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
+
+[features]
+# Keep the default set minimal but useful: the Markdown renderer is on, heavy
+# syntax highlighting (syntect) and diffing (similar) are opt-in.
+default = ["markdown"]
+# The `Markdown` component (block/inline parsing via pulldown-cmark). Reuses the
+# core `Table` component for GFM tables and `unicode-width` for column sizing.
+markdown = ["dep:pulldown-cmark", "dep:unicode-width"]
+# Syntax highlighting for `CodeBlock` (and code fences inside Markdown) via syntect.
+highlight = ["dep:syntect"]
+# The `Diff` component (line/word level text diffing via similar).
+diff = ["dep:similar"]
+# Convenience: Markdown with highlighted code fences.
+markdown-highlight = ["markdown", "highlight"]
+
+# Examples that need an optional feature declare it, so `cargo build --examples`
+# under the default feature set only builds what can compile.
+[[example]]
+name = "markdown"
+required-features = ["markdown"]
+
+[[example]]
+name = "markdown_streaming"
+required-features = ["markdown"]
+
+[[example]]
+name = "diff_viewer"
+required-features = ["diff"]
