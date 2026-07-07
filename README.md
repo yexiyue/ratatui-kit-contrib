@@ -17,6 +17,16 @@
 
 ---
 
+![ratatui-kit-markdown demo](./crates/ratatui-kit-markdown/assets/markdown.gif)
+
+The demo above is generated from the real
+[`ratatui-kit-markdown`](./crates/ratatui-kit-markdown) example with its package-local
+[`tapes/markdown.tape`](./crates/ratatui-kit-markdown/tapes/markdown.tape). The recording
+asset lives next to the crate at
+[`assets/markdown.gif`](./crates/ratatui-kit-markdown/assets/markdown.gif).
+
+---
+
 ## Overview
 
 This is the home for **official** `ratatui-kit-<name>` component crates — extensions
@@ -59,9 +69,14 @@ ratatui-kit-contrib/
 ├── Cargo.toml           # [workspace] resolver = "3"; members added per crate
 ├── cliff.toml           # per-crate tag-prefix aware CHANGELOG config
 ├── rustfmt.toml         # tab_spaces = 4
+├── skills/              # one repo-level Codex skill for contrib maintenance
 ├── .github/workflows/   # fmt · clippy -D warnings · test · doc, workspace-wide
 └── crates/
     └── ratatui-kit-<name>/   # one directory per official extension crate
+        ├── assets/           # generated example GIFs for this crate
+        ├── tapes/            # reproducible VHS recordings for real examples
+        ├── examples/
+        └── src/
 ```
 
 ---
@@ -90,6 +105,17 @@ cargo fmt --all --check
 cargo clippy --all-targets --all-features --workspace -- -D warnings
 cargo test --all-features --workspace --lib --tests --examples
 RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --document-private-items --all-features --workspace --examples
+```
+
+### Recording examples
+
+Example GIFs live inside the crate they demonstrate. For `ratatui-kit-markdown`, each
+package-local tape writes to `crates/ratatui-kit-markdown/assets/`:
+
+```bash
+for tape in crates/ratatui-kit-markdown/tapes/*.tape; do
+    vhs "$tape"
+done
 ```
 
 ### Releasing

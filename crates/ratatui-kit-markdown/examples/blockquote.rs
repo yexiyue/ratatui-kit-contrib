@@ -48,7 +48,7 @@ fn App(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
     });
 
     element!(
-        Center(width: Constraint::Length(60), height: Constraint::Length(22)) {
+        Center(width: Constraint::Length(64), height: Constraint::Length(16)) {
             Border(
                 flex_direction: Direction::Vertical,
                 gap: 1,
@@ -57,26 +57,20 @@ fn App(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
                 bottom_title: Line::from(" <- -> depth | q quit ").dark_gray().centered(),
             ) {
                 View(height: Constraint::Length(1)) {
-                    Text(text: Line::from(format!("depth: {}", depth.get())))
+                    Text(text: Line::from(format!("current depth: {}", depth.get())))
                 }
 
                 Divider(char: '─', style_cfg: Style::new().fg(Color::DarkGray))
 
-                Text(text: Line::from("depth = 1:"))
-                Blockquote(depth: 1, prefix_color: Color::DarkGray) {
+                Text(text: Line::from("The quote below is rendered with the selected depth:"))
+                Blockquote(
+                    depth: depth.get(),
+                    prefix_color: Color::Cyan,
+                    bg_color: Color::Rgb(18, 22, 30),
+                ) {
                     Text(text: Line::from("first line of quoted text"))
-                    Text(text: Line::from("second line of quoted text"))
-                }
-
-                Text(text: Line::from("depth = 2:"))
-                Blockquote(depth: 2, prefix_color: Color::DarkGray) {
-                    Text(text: Line::from("nested level-2 quote"))
-                    Text(text: Line::from("content flows here"))
-                }
-
-                Text(text: Line::from("depth = 3:"))
-                Blockquote(depth: 3, prefix_color: Color::DarkGray) {
-                    Text(text: Line::from("deeply nested quote"))
+                    Text(text: Line::from("second line keeps the same quote depth"))
+                    Text(text: Line::from("cycle depth to inspect the prefix gutter"))
                 }
             }
         }
