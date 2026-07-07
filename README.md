@@ -53,9 +53,9 @@ framework's release cadence and quality bar.
 
 ## Crates
 
-| Crate | Description | Version | Feature-gated deps |
-| --- | --- | --- | --- |
-| [`ratatui-kit-markdown`](./crates/ratatui-kit-markdown) | Markdown, code block, diff, blockquote and divider components | `0.1.0` | `pulldown-cmark` (`markdown`), `syntect` (`highlight`), `similar` (`diff`) |
+| Crate | Description | Version | Original author | Feature-gated deps |
+| --- | --- | --- | --- | --- |
+| [`ratatui-kit-markdown`](./crates/ratatui-kit-markdown) | Markdown, code block, diff, blockquote and divider components | `0.1.0` | [KonghaYao](https://github.com/KonghaYao) via [ratatui-kit#12](https://github.com/yexiyue/ratatui-kit/pull/12) | `pulldown-cmark` (`markdown`), `syntect` (`highlight`), `similar` (`diff`) |
 
 > As crates land, add a row here and a member entry in the workspace
 > [`Cargo.toml`](./Cargo.toml).
@@ -69,7 +69,6 @@ ratatui-kit-contrib/
 ├── Cargo.toml           # [workspace] resolver = "3"; members added per crate
 ├── cliff.toml           # per-crate tag-prefix aware CHANGELOG config
 ├── rustfmt.toml         # tab_spaces = 4
-├── skills/              # one repo-level Codex skill for contrib maintenance
 ├── .github/workflows/   # fmt · clippy -D warnings · test · doc, workspace-wide
 └── crates/
     └── ratatui-kit-<name>/   # one directory per official extension crate
