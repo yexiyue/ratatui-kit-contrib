@@ -5,18 +5,16 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 project adheres to [Semantic Versioning](https://semver.org/).
 
-This file can be generated from Conventional Commit history with
-[git-cliff](https://git-cliff.org):
-
-```bash
-git cliff --tag-pattern '^ratatui-kit-markdown-v[0-9].*' \
-          --include-path 'crates/ratatui-kit-markdown/**' \
-          -o crates/ratatui-kit-markdown/CHANGELOG.md
-```
-
-## [unreleased]
+## [0.1.0] - 2026-07-07
 
 ### 🚀 Features
 
-- Initial release: `Markdown`, `CodeBlock`, `Diff`, `Blockquote` and `Divider`
-  components migrated out of the core `ratatui-kit` crate.
+- 新增 ratatui-kit-markdown(从 ratatui-kit #12 迁移,修 review 3 个 bug,基于 0.8.0)
+
+### 📚 Documentation
+
+- *(markdown)* Add example recordings
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* 迁移 markdown 发布流程
