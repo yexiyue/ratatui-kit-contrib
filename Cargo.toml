@@ -24,4 +24,4 @@ rust-version = "1.85"
 # Reach `ratatui` / `crossterm` types through `ratatui_kit::ratatui` /
 # `ratatui_kit::crossterm`; do NOT add a direct `ratatui` dependency.
 [workspace.dependencies]
-ratatui-kit = ">=0.8, <0.9"
+ratatui-kit = ">=0.9, <0.10"

@@ -164,7 +164,7 @@ fn App(mut hooks: Hooks) -> impl Into<AnyElement<'static>> {
     element!(
         ScrollView(
             flex_direction: Direction::Vertical,
-            scroll_bars: ScrollBars {
+            scrollbars: Scrollbars {
                 vertical_scrollbar_visibility: ScrollbarVisibility::Always,
                 ..Default::default()
             },

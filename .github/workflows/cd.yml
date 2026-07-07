@@ -1,0 +1,155 @@
+name: Publish & Release by Tag
+
+# Release flow:
+#   1. Bump crates/<crate>/Cargo.toml version and commit it.
+#   2. Create a per-crate tag, for example `ratatui-kit-markdown-v0.1.0`.
+#   3. Push main and the tag.
+# This workflow verifies the tag/version match, publishes the crate to crates.io,
+# regenerates that crate's CHANGELOG.md, and creates a GitHub Release.
+
+on:
+  push:
+    tags:
+      - "ratatui-kit-*-v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, for example ratatui-kit-markdown-v0.1.0"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      prefix: ${{ steps.meta.outputs.prefix }}
+      version: ${{ steps.meta.outputs.version }}
+      crate_path: ${{ steps.meta.outputs.crate_path }}
+    steps:
+      - name: Extract crate prefix and version from tag
+        id: meta
+        env:
+          DISPATCH_TAG: ${{ github.event.inputs.tag }}
+        run: |
+          TAG_NAME="${GITHUB_REF_NAME}"
+          if [ -n "${DISPATCH_TAG:-}" ]; then
+            TAG_NAME="$DISPATCH_TAG"
+          fi
+
+          case "$TAG_NAME" in
+            ratatui-kit-*-v[0-9]*) ;;
+            *)
+              echo "::error::release tags must look like ratatui-kit-<name>-v<version>, got '$TAG_NAME'"
+              exit 1
+              ;;
+          esac
+
+          PREFIX="${TAG_NAME%-v*}"
+          VERSION="${TAG_NAME##*-v}"
+          CRATE_PATH="crates/$PREFIX"
+
+          echo "tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
+          echo "prefix=$PREFIX" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "crate_path=$CRATE_PATH" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout release tag
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ steps.meta.outputs.tag }}
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Verify Cargo.toml version matches the tag
+        run: |
+          CRATE_PATH="${{ steps.meta.outputs.crate_path }}"
+          test -f "$CRATE_PATH/Cargo.toml" || { echo "::error::$CRATE_PATH/Cargo.toml not found"; exit 1; }
+          CARGO_VER=$(grep -m1 '^version' "$CRATE_PATH/Cargo.toml" | sed -E 's/.*"([^"]+)".*/\1/')
+          if [ "$CARGO_VER" != "${{ steps.meta.outputs.version }}" ]; then
+            echo "::error::tag version ${{ steps.meta.outputs.version }} != $CRATE_PATH Cargo.toml version $CARGO_VER"
+            exit 1
+          fi
+
+      - name: Publish to crates.io
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo publish --manifest-path "${{ steps.meta.outputs.crate_path }}/Cargo.toml" --token "$CARGO_REGISTRY_TOKEN"
+
+  release:
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main with full history
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Install git-cliff
+        uses: taiki-e/install-action@v2
+        with:
+          tool: git-cliff
+
+      - name: Generate release notes
+        env:
+          CRATE_PATH: ${{ needs.publish.outputs.crate_path }}
+          PREFIX: ${{ needs.publish.outputs.prefix }}
+        run: |
+          git cliff \
+            --config cliff.toml \
+            --tag-pattern "^${PREFIX}-v[0-9].*" \
+            --include-path "${CRATE_PATH}/**" \
+            --latest \
+            --strip header \
+            --output RELEASE_NOTES.md
+
+      - name: Regenerate crate CHANGELOG.md
+        env:
+          CRATE_PATH: ${{ needs.publish.outputs.crate_path }}
+          PREFIX: ${{ needs.publish.outputs.prefix }}
+        run: |
+          git cliff \
+            --config cliff.toml \
+            --tag-pattern "^${PREFIX}-v[0-9].*" \
+            --include-path "${CRATE_PATH}/**" \
+            --output CHANGELOG.generated.md
+
+          {
+            echo "# Changelog"
+            echo
+            echo "All notable changes to this project are documented in this file."
+            echo
+            echo "The format is based on [Keep a Changelog](https://keepachangelog.com/), and this"
+            echo "project adheres to [Semantic Versioning](https://semver.org/)."
+            echo
+            cat CHANGELOG.generated.md
+          } > "${CRATE_PATH}/CHANGELOG.md"
+
+      - name: Commit updated crate CHANGELOG.md back to main
+        env:
+          CRATE_PATH: ${{ needs.publish.outputs.crate_path }}
+          TAG_NAME: ${{ needs.publish.outputs.tag }}
+        run: |
+          if git diff --quiet -- "$CRATE_PATH/CHANGELOG.md"; then
+            echo "$CRATE_PATH/CHANGELOG.md unchanged, nothing to commit"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add "$CRATE_PATH/CHANGELOG.md"
+            git commit -m "chore(release): update changelog for $TAG_NAME [skip ci]"
+            git push origin HEAD:main
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.publish.outputs.tag }}
+          name: ${{ needs.publish.outputs.tag }}
+          body_path: RELEASE_NOTES.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -14,17 +14,15 @@ keywords = ["ratatui-kit", "markdown", "tui"]
 categories = ["command-line-interface", "text-processing"]
 
 [dependencies]
-# NOTE: the local `path` dependency is ONLY for validating this crate before the
-# framework's 0.8.0 (with the frozen Extension API surface) is published. When
-# publishing to crates.io, replace it with a version RANGE that matches the
-# Extension API surface you build against (see EXTENSION_API.md):
+# Depend on the framework version range that matches the Extension API surface
+# this crate builds against (see EXTENSION_API.md):
 #
-#   ratatui-kit = { version = ">=0.8, <0.9", features = ["table"] }
+#   ratatui-kit = { version = ">=0.9, <0.10", features = ["table"] }
 #
 # `features = ["table"]` pulls in the core `Table` component that the Markdown
 # renderer reuses. Reach `ratatui` / `crossterm` types via `ratatui_kit::ratatui`
 # / `ratatui_kit::crossterm` — never a direct `ratatui` dependency.
-ratatui-kit = { version = ">=0.8, <0.9", features = [
+ratatui-kit = { version = ">=0.9, <0.10", features = [
     "table",
 ] }
 
