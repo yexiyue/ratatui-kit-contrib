@@ -9,6 +9,12 @@
 #
 # 这样 CHANGELOG 只按「该 crate」的发布标签分节、只统计该 crate 目录下的提交。
 # 下面的 `tag_pattern` 是通用兜底：匹配任意 `ratatui-kit-<name>-v<version>` 标签。
+#
+# 已踩坑（ratatui-kit-themes-v0.1.0 首发）：`--tag-pattern` + `--include-path` 组合要求
+# 标签所指向的 commit 本身必须命中 include-path 过滤，否则 git-cliff 解析不出版本号，
+# 渲染成 `## [unreleased]`（CHANGELOG.md 和 GitHub Release notes 都会错）。若某 crate
+# 打 tag 时 HEAD 恰好是另一个 crate 的发布提交（不触碰本 crate 目录），务必把标签打在
+# 「最后一个真正改动了该 crate 目录的 commit」上，而不是当前 HEAD。
 
 [changelog]
 # 每个 release 渲染的 Tera 模板（keepachangelog 风格）。
