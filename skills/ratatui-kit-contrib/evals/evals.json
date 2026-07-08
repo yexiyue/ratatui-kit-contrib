@@ -1,0 +1,44 @@
+{
+  "skill_name": "ratatui-kit-contrib",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I'm building a terminal app with ratatui-kit and I want to show my project's README.md inside it, with syntax-highlighted code blocks. Can you set it up using a Dracula color theme too?",
+      "expected_output": "A working ratatui-kit app that uses Markdown from ratatui-kit-markdown (with the markdown-highlight feature so code fences are syntax-highlighted) wrapped in a PaletteProvider driven by ThemeName::Dracula.into_kit_palette() from ratatui-kit-themes. Should compile cleanly.",
+      "files": [],
+      "assertions": [
+        "Cargo.toml declares ratatui-kit-markdown as a dependency",
+        "Cargo.toml enables syntax highlighting for ratatui-kit-markdown (the markdown-highlight feature, or both markdown and highlight features)",
+        "Cargo.toml declares ratatui-kit-themes as a dependency, and does NOT also declare a direct ratatui-themes dependency (ratatui-kit-themes re-exports ThemeName/Theme/ThemePalette so a second direct dependency is redundant)",
+        "Source code renders the README content using the Markdown component from ratatui_kit_markdown, not a hand-written Markdown parser or plain Text/Paragraph rendering of raw Markdown syntax",
+        "Source code wires up a Dracula theme via ratatui_kit_themes (e.g. ThemeName::Dracula combined with into_kit_palette() or palette_from_name), feeding the result into a PaletteProvider that wraps the Markdown component",
+        "The project compiles cleanly with `cargo check` (0 errors) using the features actually referenced in the code"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Build me a component for my ratatui-kit terminal app that shows a diff between two versions of a file, like git diff — I want line numbers visible.",
+      "expected_output": "Uses the Diff component from ratatui-kit-markdown (diff feature enabled) with show_line_numbers: true, not a hand-rolled diff algorithm. Should compile cleanly.",
+      "files": [],
+      "assertions": [
+        "Cargo.toml declares ratatui-kit-markdown as a dependency with its diff feature enabled",
+        "Source code uses the Diff component from ratatui_kit_markdown to render the comparison, rather than hand-implementing a line/word diff algorithm or pulling in a diffing crate directly (e.g. similar) and rendering it manually",
+        "Source code passes show_line_numbers: true (or Some(true)) to Diff so line numbers are visible, matching the user's explicit request",
+        "The project compiles cleanly with `cargo check` (0 errors) using the features actually referenced in the code"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Add a theme switcher to my ratatui-kit app — pressing 't' should cycle through different color themes, and show a quoted/callout box below that says which theme is currently active.",
+      "expected_output": "Uses ratatui-kit-themes' ThemeName held in use_state, cycled with .next() on 't', fed into PaletteProvider. Uses Blockquote from ratatui-kit-markdown for the callout, not a hand-rolled bordered box. Should compile cleanly.",
+      "files": [],
+      "assertions": [
+        "Cargo.toml declares ratatui-kit-themes as a dependency",
+        "Source code cycles through ThemeName (or Theme) values in a use_state (or Atom) on the 't' key press, e.g. via ThemeName::next(), rather than hand-writing a fixed list of Style/Color values to cycle through",
+        "Source code feeds the current theme into a PaletteProvider (directly or via into_kit_palette()/palette_from_name()) so the rest of the UI actually recolors when the theme changes",
+        "Source code uses the Blockquote component from ratatui_kit_markdown for the callout box that names the current theme, rather than a hand-rolled Border/View styled to look like a callout",
+        "The project compiles cleanly with `cargo check` (0 errors) using the features actually referenced in the code"
+      ]
+    }
+  ]
+}
