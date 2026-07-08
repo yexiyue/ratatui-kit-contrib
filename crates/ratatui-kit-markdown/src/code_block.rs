@@ -6,6 +6,8 @@ use ratatui_kit::ratatui::{
     widgets::{Block, Borders, Paragraph, Widget, Wrap},
 };
 
+use crate::theme::{CodeBlockTheme, resolve_style};
+
 /// 代码块组件。
 ///
 /// 支持可选行号、语言标签。可独立于 Markdown 使用。
@@ -41,12 +43,14 @@ pub struct CodeBlockProps<'a> {
     /// `"base16-eighties.dark"`, `"base16-mocha.dark"`。
     /// 也可通过 `ThemeSet::add_from_folder` 加载自定义 `.tmTheme` 文件。
     pub highlight_theme: Option<String>,
-    /// 行号样式。
+    /// 行号样式覆盖。`None` 用主题，`Some(style)` patch 主题，`Some(Style::reset())` 清空。
     pub line_number_style: Option<Style>,
-    /// 代码内容样式（仅在无语法高亮时使用）。
+    /// 代码内容样式覆盖（仅在无语法高亮时使用）。
     pub code_style: Option<Style>,
-    /// 整体边框样式。
+    /// 整体边框样式覆盖。
     pub border_style: Option<Style>,
+    /// 语言标签样式覆盖。
+    pub language_label_style: Option<Style>,
     /// 是否显示外框边框。默认 true。
     pub show_border: Option<bool>,
     /// 子元素（代码块内部不承载子组件，此字段仅为 Props derive 占位）。
@@ -61,9 +65,10 @@ impl Default for CodeBlockProps<'_> {
             show_line_numbers: Some(true),
             show_border: Some(true),
             highlight_theme: Some("base16-ocean.dark".to_string()),
-            line_number_style: Some(Style::new().fg(Color::DarkGray)),
-            code_style: Some(Style::new().fg(Color::White)),
-            border_style: Some(Style::new().fg(Color::DarkGray)),
+            line_number_style: None,
+            code_style: None,
+            border_style: None,
+            language_label_style: None,
             children: Vec::new(),
             margin: Default::default(),
             offset: Default::default(),
@@ -88,10 +93,11 @@ pub struct CodeBlock {
     line_number_style: Style,
     code_style: Style,
     border_style: Style,
+    language_label_style: Style,
 }
 
 impl CodeBlock {
-    fn from_props(props: &CodeBlockProps<'_>) -> Self {
+    fn from_props(props: &CodeBlockProps<'_>, theme: CodeBlockTheme) -> Self {
         Self {
             lines: props.lines.clone(),
             lang: props.lang.clone(),
@@ -100,14 +106,14 @@ impl CodeBlock {
             highlight_theme: props
                 .highlight_theme
                 .clone()
-                .unwrap_or_else(|| "InspiredGitHub".to_string()),
-            line_number_style: props
-                .line_number_style
-                .unwrap_or(Style::new().fg(Color::DarkGray)),
-            code_style: props.code_style.unwrap_or(Style::new().fg(Color::White)),
-            border_style: props
-                .border_style
-                .unwrap_or(Style::new().fg(Color::DarkGray)),
+                .unwrap_or_else(|| "base16-ocean.dark".to_string()),
+            line_number_style: resolve_style(theme.line_number_style, props.line_number_style),
+            code_style: resolve_style(theme.code_style, props.code_style),
+            border_style: resolve_style(theme.border_style, props.border_style),
+            language_label_style: resolve_style(
+                theme.language_label_style,
+                props.language_label_style,
+            ),
         }
     }
 
@@ -214,7 +220,7 @@ impl Component for CodeBlock {
     type Props<'a> = CodeBlockProps<'a>;
 
     fn new(props: &Self::Props<'_>) -> Self {
-        Self::from_props(props)
+        Self::from_props(props, CodeBlockTheme::default())
     }
 
     fn update(
@@ -223,7 +229,8 @@ impl Component for CodeBlock {
         _hooks: Hooks,
         updater: &mut ComponentUpdater,
     ) {
-        *self = Self::from_props(props);
+        let theme = updater.use_component_theme::<CodeBlockTheme>();
+        *self = Self::from_props(props, theme);
         updater.set_layout_style(props.layout_style());
         updater.update_children(&mut props.children, None);
     }
@@ -239,7 +246,7 @@ impl Component for CodeBlock {
             let block = if let Some(ref lang) = self.lang {
                 let label = format!(" {lang} ");
                 block.title_top(
-                    Line::styled(label, Style::new().fg(Color::Cyan)).alignment(Alignment::Left),
+                    Line::styled(label, self.language_label_style).alignment(Alignment::Left),
                 )
             } else {
                 block
@@ -256,5 +263,48 @@ impl Component for CodeBlock {
             let paragraph = Paragraph::new(text).wrap(Wrap { trim: false });
             paragraph.render(area, drawer.buffer_mut());
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ratatui_kit::ratatui::style::Color;
+
+    #[test]
+    fn resolves_styles_from_theme() {
+        let theme = CodeBlockTheme {
+            line_number_style: Style::new().fg(Color::Blue),
+            code_style: Style::new().fg(Color::White),
+            border_style: Style::new().fg(Color::Green),
+            language_label_style: Style::new().fg(Color::Yellow),
+        };
+        let block = CodeBlock::from_props(&CodeBlockProps::default(), theme);
+
+        assert_eq!(block.line_number_style.fg, Some(Color::Blue));
+        assert_eq!(block.code_style.fg, Some(Color::White));
+        assert_eq!(block.border_style.fg, Some(Color::Green));
+        assert_eq!(block.language_label_style.fg, Some(Color::Yellow));
+    }
+
+    #[test]
+    fn style_override_patches_and_reset_clears_theme() {
+        let theme = CodeBlockTheme {
+            line_number_style: Style::new().fg(Color::Blue).bg(Color::Black),
+            code_style: Style::new().fg(Color::White),
+            border_style: Style::new().fg(Color::Green),
+            language_label_style: Style::new().fg(Color::Yellow),
+        };
+        let props = CodeBlockProps {
+            line_number_style: Some(Style::new().fg(Color::Red)),
+            border_style: Some(Style::reset()),
+            ..CodeBlockProps::default()
+        };
+
+        let block = CodeBlock::from_props(&props, theme);
+
+        assert_eq!(block.line_number_style.fg, Some(Color::Red));
+        assert_eq!(block.line_number_style.bg, Some(Color::Black));
+        assert_eq!(block.border_style, Style::reset());
     }
 }

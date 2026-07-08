@@ -1,0 +1,28 @@
+[package]
+name = "ratatui-kit-themes"
+version = "0.1.0"
+description = "Official ratatui-kit theme adapters for ratatui-themes"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+readme = "README.md"
+keywords = ["ratatui-kit", "themes", "ratatui", "tui"]
+categories = ["command-line-interface"]
+
+[dependencies]
+ratatui-kit = { workspace = true }
+ratatui-themes = { version = "0.2", default-features = false }
+
+[dev-dependencies]
+ratatui-kit = { workspace = true, features = ["input", "table"] }
+ratatui-kit-markdown = { path = "../ratatui-kit-markdown", features = [
+    "markdown",
+    "highlight",
+    "diff",
+] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
+
+[[example]]
+name = "gallery"

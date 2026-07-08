@@ -5,6 +5,7 @@ resolver = "3"
 # and published to crates.io as `ratatui-kit-<name>`.
 members = [
     "crates/ratatui-kit-markdown",
+    "crates/ratatui-kit-themes",
 ]
 
 # Shared metadata every member crate can inherit with `field.workspace = true`.
@@ -16,12 +17,11 @@ repository = "https://github.com/yexiyue/ratatui-kit-contrib"
 authors = ["yexiyue"]
 rust-version = "1.85"
 
-# Shared dependency pins. Member crates depend on the framework with a version
-# range (see EXTENSION_API.md's stability policy) so a semver-minor of the
-# framework does not silently break an extension crate:
+# Shared dependency pins. Official contrib crates track the framework Extension
+# API from 0.10 onward and are kept in sync by this workspace:
 #   ratatui-kit = { workspace = true }
 #
 # Reach `ratatui` / `crossterm` types through `ratatui_kit::ratatui` /
 # `ratatui_kit::crossterm`; do NOT add a direct `ratatui` dependency.
 [workspace.dependencies]
-ratatui-kit = ">=0.9, <0.10"
+ratatui-kit = ">=0.10"

@@ -59,6 +59,32 @@ stays light:
 ratatui-kit-markdown = { version = "0.1", features = ["markdown-highlight"] }
 ```
 
+## Theming
+
+Default styles follow the core `ratatui-kit` theme protocol. `Markdown`,
+`CodeBlock`, `Blockquote`, `Divider`, and `Diff` derive their defaults from the
+current `PaletteProvider` via local `MarkdownTheme`, `CodeBlockTheme`,
+`BlockquoteTheme`, `DividerTheme`, and `DiffTheme` slots.
+
+```rust,no_run
+use ratatui_kit::prelude::*;
+use ratatui_kit::ratatui::style::Color;
+use ratatui_kit_markdown::Markdown;
+
+let mut palette = Palette::default();
+palette.info = Color::Cyan;
+
+let _view = element!(PaletteProvider(palette: palette) {
+    Markdown(content: "Inline `code` and [links](https://example.com).".to_string())
+});
+```
+
+Style props use the same override semantics as core components:
+
+- `None`: use the theme
+- `Some(style)`: patch over the themed style
+- `Some(Style::reset())`: clear the themed style for that slot
+
 ## Usage
 
 ```rust,no_run

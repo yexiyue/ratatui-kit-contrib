@@ -6,11 +6,12 @@ use pulldown_cmark::{Alignment, HeadingLevel};
 use ratatui_kit::prelude::*;
 use ratatui_kit::ratatui::{
     layout::{Constraint, Direction},
-    style::{Color, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
 };
 use unicode_width::UnicodeWidthStr;
 
+use crate::MarkdownTheme;
 use crate::{CodeBlock, Divider};
 
 // Re-export the parser types: `render_blocks` (public) takes `&[ParsedBlock]`, so
@@ -47,7 +48,8 @@ pub fn Markdown(mut hooks: Hooks, props: &MarkdownProps) -> impl Into<AnyElement
     // 用 use_memo 缓存解析结果，只有 content 变化时才重新解析。
     // render_blocks 每帧调用（开销很小，只遍历 blocks + clone Span）。
     let parsed = hooks.use_memo(|| parse_markdown(&props.content), props.content.clone());
-    let rendered = render_blocks(&parsed.blocks);
+    let theme = hooks.use_component_theme::<MarkdownTheme>();
+    let rendered = render_blocks_with_theme(&parsed.blocks, &theme);
     element! {
         View(
             flex_direction: Direction::Vertical,
@@ -101,26 +103,66 @@ fn heading_level_num(level: HeadingLevel) -> usize {
     }
 }
 
-fn heading_line(level_num: usize, line: &Line<'static>) -> Line<'static> {
+fn heading_line(level_num: usize, line: &Line<'static>, theme: &MarkdownTheme) -> Line<'static> {
     let prefix = "#".repeat(level_num);
     let mut spans = vec![
-        Span::styled(prefix, Style::new().fg(Color::DarkGray)),
+        Span::styled(prefix, theme.heading_marker_style),
         Span::raw(" "),
     ];
-    spans.extend(line.spans.clone());
+    spans.extend(style_spans(&line.spans, theme, Some(theme.heading_style)));
     Line::from(spans)
 }
 
-fn list_item_line(item: &ListItemData) -> Line<'static> {
+fn list_item_line(item: &ListItemData, theme: &MarkdownTheme) -> Line<'static> {
     let indent = "  ".repeat(item.depth as usize);
     let prefix = if item.ordered {
         format!("{}{}. ", indent, item.number.unwrap_or(1))
     } else {
         format!("{indent}• ")
     };
-    let mut spans = vec![Span::styled(prefix, Style::new().fg(Color::DarkGray))];
-    spans.extend(item.spans.clone());
+    let mut spans = vec![Span::styled(prefix, theme.list_marker_style)];
+    spans.extend(style_spans(&item.spans, theme, None));
     Line::from(spans)
+}
+
+fn style_line(line: &Line<'static>, theme: &MarkdownTheme) -> Line<'static> {
+    Line::from(style_spans(&line.spans, theme, None))
+}
+
+fn style_spans(
+    spans: &[Span<'static>],
+    theme: &MarkdownTheme,
+    base_style: Option<Style>,
+) -> Vec<Span<'static>> {
+    spans
+        .iter()
+        .map(|span| {
+            let content = span.content.clone();
+            // Strip the parser's internal link-URL marker before patching --
+            // it must never reach the final rendered Style (see
+            // parser::LINK_URL_MARKER's doc comment).
+            let mut carried_style = span.style;
+            carried_style.add_modifier.remove(parser::LINK_URL_MARKER);
+            let style = semantic_style(span, theme)
+                .or(base_style)
+                .unwrap_or_default()
+                .patch(carried_style);
+            Span::styled(content, style)
+        })
+        .collect()
+}
+
+fn semantic_style(span: &Span<'static>, theme: &MarkdownTheme) -> Option<Style> {
+    let text = span.content.as_ref();
+    if span.style.add_modifier.contains(parser::LINK_URL_MARKER) {
+        Some(theme.link_url_style)
+    } else if text.len() >= 2 && text.starts_with('`') && text.ends_with('`') {
+        Some(theme.inline_code_style)
+    } else if span.style.add_modifier.contains(Modifier::UNDERLINED) {
+        Some(theme.link_style)
+    } else {
+        None
+    }
 }
 
 /// 计算 span 列表的显示宽度。
@@ -133,6 +175,7 @@ fn table_row(
     headers: &[Vec<Span<'static>>],
     rows: &[Vec<Vec<Span<'static>>>],
     alignments: &[Alignment],
+    theme: &MarkdownTheme,
 ) -> Option<RenderRow> {
     let col_count = headers
         .len()
@@ -160,7 +203,7 @@ fn table_row(
         .map(|i| {
             let header = headers
                 .get(i)
-                .map(|spans| Line::from(spans.clone()))
+                .map(|spans| Line::from(style_spans(spans, theme, None)))
                 .unwrap_or_default();
             let alignment = match alignments.get(i) {
                 Some(Alignment::Center) => TableCellAlignment::Center,
@@ -178,13 +221,28 @@ fn table_row(
 
     Some(RenderRow::Table {
         columns,
-        rows: rows.to_vec(),
+        rows: rows
+            .iter()
+            .map(|row| {
+                row.iter()
+                    .map(|cell| style_spans(cell, theme, None))
+                    .collect()
+            })
+            .collect(),
         height: table_height,
     })
 }
 
 /// 把解析块摊平成渲染行列表（含所有空行间距）。
+#[cfg(test)]
 pub(crate) fn render_rows(blocks: &[ParsedBlock]) -> Vec<RenderRow> {
+    render_rows_with_theme(blocks, &MarkdownTheme::default())
+}
+
+pub(crate) fn render_rows_with_theme(
+    blocks: &[ParsedBlock],
+    theme: &MarkdownTheme,
+) -> Vec<RenderRow> {
     let mut rows: Vec<RenderRow> = Vec::new();
     let mut prev_added_trailing = false;
     let mut prev_was_major = false;
@@ -216,6 +274,7 @@ pub(crate) fn render_rows(blocks: &[ParsedBlock]) -> Vec<RenderRow> {
                 rows.push(RenderRow::Line(heading_line(
                     heading_level_num(*level),
                     line,
+                    theme,
                 )));
                 rows.push(RenderRow::Line(Line::default()));
                 prev_added_trailing = true;
@@ -227,7 +286,7 @@ pub(crate) fn render_rows(blocks: &[ParsedBlock]) -> Vec<RenderRow> {
                 } else {
                     // 每一行独立成行（硬换行也是真实换行）。
                     for line in lines {
-                        rows.push(RenderRow::Line(line.clone()));
+                        rows.push(RenderRow::Line(style_line(line, theme)));
                     }
                 }
             }
@@ -246,10 +305,10 @@ pub(crate) fn render_rows(blocks: &[ParsedBlock]) -> Vec<RenderRow> {
                 prev_added_trailing = true;
             }
             ParsedBlock::ListItem(item) => {
-                rows.push(RenderRow::Line(list_item_line(item)));
+                rows.push(RenderRow::Line(list_item_line(item, theme)));
             }
             ParsedBlock::Table(headers, table_rows, alignments) => {
-                match table_row(headers, table_rows, alignments) {
+                match table_row(headers, table_rows, alignments, theme) {
                     Some(row) => rows.push(row),
                     None => rows.push(RenderRow::Line(Line::default())),
                 }
@@ -267,7 +326,7 @@ pub(crate) fn render_rows(blocks: &[ParsedBlock]) -> Vec<RenderRow> {
 }
 
 /// 把一个渲染行构造成 `AnyElement`。
-fn build_row(row: RenderRow) -> AnyElement<'static> {
+fn build_row(row: RenderRow, theme: &MarkdownTheme) -> AnyElement<'static> {
     match row {
         RenderRow::Line(line) => element! {
             View(height: Constraint::Length(1)) {
@@ -277,7 +336,7 @@ fn build_row(row: RenderRow) -> AnyElement<'static> {
         .into_any(),
         RenderRow::Rule => element! {
             View(height: Constraint::Length(1)) {
-                Divider(char: '─', style_cfg: Style::new().fg(Color::DarkGray))
+                Divider(char: '─', style_cfg: theme.rule_style)
             }
         }
         .into_any(),
@@ -312,7 +371,7 @@ fn build_row(row: RenderRow) -> AnyElement<'static> {
                     render_row: Some(render_row),
                     active: false,
                     border_mode: TableBorderMode::Grid,
-                    border_style: Style::new().fg(Color::DarkGray),
+                    border_style: theme.table_border_style,
                     row_separator: true,
                     height: Constraint::Length(height),
                 )
@@ -327,12 +386,16 @@ fn build_row(row: RenderRow) -> AnyElement<'static> {
 /// `total_height` 即可作为 ScrollView 的内容高度，与渲染输出精确一致
 /// （代码块 / 表格按未换行的逻辑行数计，见 [`RenderedMarkdown::total_height`]）。
 pub fn render_blocks(blocks: &[ParsedBlock]) -> RenderedMarkdown {
-    let rows = render_rows(blocks);
+    render_blocks_with_theme(blocks, &MarkdownTheme::default())
+}
+
+pub fn render_blocks_with_theme(blocks: &[ParsedBlock], theme: &MarkdownTheme) -> RenderedMarkdown {
+    let rows = render_rows_with_theme(blocks, theme);
     let mut total_height: u16 = 0;
     let mut elements = Vec::with_capacity(rows.len());
     for row in rows {
         total_height = total_height.saturating_add(row.height());
-        elements.push(build_row(row));
+        elements.push(build_row(row, theme));
     }
     RenderedMarkdown {
         elements,
@@ -343,6 +406,7 @@ pub fn render_blocks(blocks: &[ParsedBlock]) -> RenderedMarkdown {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ratatui_kit::ratatui::style::Color;
 
     /// 把渲染行摊平成可断言的文本行（复合块用占位符表示）。
     fn row_texts(blocks: &[ParsedBlock]) -> Vec<String> {
@@ -395,5 +459,99 @@ mod tests {
             bullets,
             vec!["1. a".to_string(), "  1. b".to_string(), "2. c".to_string()],
         );
+    }
+
+    #[test]
+    fn inline_code_and_links_follow_markdown_theme() {
+        let parsed = parse_markdown("See `code` and [docs](https://example.com).");
+        let theme = MarkdownTheme {
+            inline_code_style: Style::new().fg(Color::Red).bg(Color::Blue),
+            link_style: Style::new().fg(Color::Green),
+            link_url_style: Style::new().fg(Color::Yellow),
+            ..MarkdownTheme::default()
+        };
+
+        let rows = render_rows_with_theme(&parsed.blocks, &theme);
+        let RenderRow::Line(line) = &rows[0] else {
+            panic!("expected first row to be a line");
+        };
+
+        let code = line
+            .spans
+            .iter()
+            .find(|span| span.content.as_ref() == "`code`")
+            .expect("inline code span");
+        let link = line
+            .spans
+            .iter()
+            .find(|span| span.content.as_ref() == "docs")
+            .expect("link span");
+        let url = line
+            .spans
+            .iter()
+            .find(|span| span.content.as_ref() == " (https://example.com)")
+            .expect("link URL span");
+
+        assert_eq!(code.style.fg, Some(Color::Red));
+        assert_eq!(code.style.bg, Some(Color::Blue));
+        assert_eq!(link.style.fg, Some(Color::Green));
+        assert_eq!(url.style.fg, Some(Color::Yellow));
+    }
+
+    /// Regression: plain prose that immediately follows a closing inline tag
+    /// (`**bold**`, `` `code` ``, ...) and happens to be entirely wrapped in a
+    /// leading " (" / trailing ")" must NOT be mistaken for the parser's
+    /// synthesized link-URL-suffix span and recolored with `link_url_style`.
+    #[test]
+    fn plain_parenthetical_prose_is_not_treated_as_a_link_url() {
+        let theme = MarkdownTheme {
+            link_url_style: Style::new().fg(Color::Yellow),
+            ..MarkdownTheme::default()
+        };
+
+        for input in [
+            "**Note:** (see below)",
+            "See `npm install` (requires Node 18+).",
+        ] {
+            let parsed = parse_markdown(input);
+            let rows = render_rows_with_theme(&parsed.blocks, &theme);
+            let RenderRow::Line(line) = &rows[0] else {
+                panic!("expected first row to be a line for {input:?}");
+            };
+            for span in &line.spans {
+                assert_ne!(
+                    span.style.fg,
+                    Some(Color::Yellow),
+                    "span {:?} in {input:?} must not be recolored as a link URL",
+                    span.content
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn rerendering_with_a_new_theme_changes_inline_styles() {
+        let parsed = parse_markdown("`code`");
+        let first = MarkdownTheme {
+            inline_code_style: Style::new().fg(Color::Red),
+            ..MarkdownTheme::default()
+        };
+        let second = MarkdownTheme {
+            inline_code_style: Style::new().fg(Color::Cyan),
+            ..MarkdownTheme::default()
+        };
+
+        let rows_first = render_rows_with_theme(&parsed.blocks, &first);
+        let rows_second = render_rows_with_theme(&parsed.blocks, &second);
+
+        let RenderRow::Line(line_first) = &rows_first[0] else {
+            panic!("expected first render row to be a line");
+        };
+        let RenderRow::Line(line_second) = &rows_second[0] else {
+            panic!("expected second render row to be a line");
+        };
+
+        assert_eq!(line_first.spans[0].style.fg, Some(Color::Red));
+        assert_eq!(line_second.spans[0].style.fg, Some(Color::Cyan));
     }
 }

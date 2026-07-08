@@ -1,8 +1,17 @@
 use pulldown_cmark::{Alignment, Event, HeadingLevel, Tag, TagEnd};
 use ratatui_kit::ratatui::{
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
 };
+
+/// Internal marker distinguishing the parser-synthesized link-destination
+/// suffix span (`" (url)"`, appended right after a link) from ordinary prose
+/// that happens to look the same (e.g. a parenthetical aside right after a
+/// closing `**bold**`/code span). `Modifier::REVERSED` is never otherwise
+/// produced by this parser, so it's safe to repurpose as a private tag here;
+/// `markdown::mod::style_spans` MUST strip it before emitting the final
+/// themed `Span`, or it would visibly reverse fg/bg on real terminals.
+pub(crate) const LINK_URL_MARKER: Modifier = Modifier::REVERSED;
 
 // ── 块级元素中间表示 ─────────────────────────────────────────────
 
@@ -171,9 +180,7 @@ impl RenderState {
             // ── 标题 ──
             Event::Start(Tag::Heading { .. }) => {
                 self.flush_spans();
-                self.inline_style = Style::default()
-                    .fg(Color::Rgb(255, 193, 7))
-                    .add_modifier(Modifier::BOLD);
+                self.inline_style = Style::default().add_modifier(Modifier::BOLD);
             }
             Event::End(TagEnd::Heading(level)) => {
                 let line = Line::from(std::mem::take(&mut self.current_spans));
@@ -343,32 +350,32 @@ impl RenderState {
             // ── 链接 ──
             Event::Start(Tag::Link { dest_url, .. }) => {
                 self.style_stack.push(self.inline_style);
-                self.inline_style = self
-                    .inline_style
-                    .fg(Color::Rgb(78, 186, 101))
-                    .add_modifier(Modifier::UNDERLINED);
+                self.inline_style = self.inline_style.add_modifier(Modifier::UNDERLINED);
                 self.current_link_url = Some(dest_url.into_string());
             }
             Event::End(TagEnd::Link) => {
                 self.restore_inline_style();
                 // 链接文本后跟 URL
                 if let Some(url) = self.current_link_url.take() {
-                    self.current_spans.push(Span::styled(
+                    let url = Span::styled(
                         format!(" ({url})"),
-                        Style::default().fg(Color::DarkGray),
-                    ));
+                        Style::default().add_modifier(LINK_URL_MARKER),
+                    );
+                    if self.table_alignments.is_some() {
+                        self.table_current_cell.push(url);
+                    } else {
+                        self.current_spans.push(url);
+                    }
                 }
             }
 
             // ── 行内代码 ──
             Event::Code(text) => {
-                let style = Style::default().fg(Color::Rgb(162, 169, 228));
+                let text = format!("`{}`", text.into_string());
                 if self.table_alignments.is_some() {
-                    self.table_current_cell
-                        .push(Span::styled(text.into_string(), style));
+                    self.table_current_cell.push(Span::raw(text));
                 } else {
-                    self.current_spans
-                        .push(Span::styled(format!("`{}`", text.into_string()), style));
+                    self.current_spans.push(Span::raw(text));
                 }
             }
 

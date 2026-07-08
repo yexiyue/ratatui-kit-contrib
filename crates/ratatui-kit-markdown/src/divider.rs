@@ -2,9 +2,11 @@ use ratatui_kit::prelude::*;
 use ratatui_kit::ratatui::{
     buffer::Buffer,
     layout::Rect,
-    style::{Color, Style},
+    style::Style,
     widgets::{Paragraph, Widget},
 };
+
+use crate::theme::{DividerTheme, resolve_style};
 
 /// 水平分割线（分隔符）组件。
 ///
@@ -23,7 +25,7 @@ use ratatui_kit::ratatui::{
 pub struct DividerProps {
     /// 分割线使用的字符。默认 `'─'`。
     pub char: Option<char>,
-    /// 分割线的样式。默认暗灰色。
+    /// 分割线样式。`None` 用主题，`Some(style)` patch 主题，`Some(Style::reset())` 清空。
     pub style_cfg: Option<Style>,
 }
 
@@ -31,7 +33,7 @@ impl Default for DividerProps {
     fn default() -> Self {
         Self {
             char: Some('─'),
-            style_cfg: Some(Style::new().fg(Color::DarkGray)),
+            style_cfg: None,
             margin: Default::default(),
             offset: Default::default(),
             width: Default::default(),
@@ -64,9 +66,10 @@ impl Widget for &DividerLine {
 }
 
 #[component]
-pub fn Divider(props: &DividerProps) -> impl Into<AnyElement<'static>> {
+pub fn Divider(props: &DividerProps, hooks: Hooks) -> impl Into<AnyElement<'static>> {
+    let theme = hooks.use_component_theme::<DividerTheme>();
     let ch = props.char.unwrap_or('─');
-    let style = props.style_cfg.unwrap_or_default();
+    let style = resolve_style(theme.style, props.style_cfg);
 
     let line = ch.to_string().repeat(256);
     let paragraph = Paragraph::new(line).style(style);

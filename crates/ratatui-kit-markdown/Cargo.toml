@@ -14,15 +14,14 @@ keywords = ["ratatui-kit", "markdown", "tui"]
 categories = ["command-line-interface", "text-processing"]
 
 [dependencies]
-# Depend on the framework version range that matches the Extension API surface
-# this crate builds against (see EXTENSION_API.md):
+# Depend on the framework baseline this workspace tracks (see EXTENSION_API.md):
 #
-#   ratatui-kit = { version = ">=0.9, <0.10", features = ["table"] }
+#   ratatui-kit = { version = ">=0.10", features = ["table"] }
 #
 # `features = ["table"]` pulls in the core `Table` component that the Markdown
 # renderer reuses. Reach `ratatui` / `crossterm` types via `ratatui_kit::ratatui`
 # / `ratatui_kit::crossterm` — never a direct `ratatui` dependency.
-ratatui-kit = { version = ">=0.9, <0.10", features = [
+ratatui-kit = { version = ">=0.10", features = [
     "table",
 ] }
 

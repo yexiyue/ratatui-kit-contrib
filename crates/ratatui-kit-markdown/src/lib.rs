@@ -45,6 +45,10 @@
 //! }
 //! ```
 
+/// Theme slots derived from `ratatui-kit` palettes.
+pub mod theme;
+pub use theme::*;
+
 /// Quoted container component with a solid left bar and nesting depth.
 pub mod blockquote;
 pub use blockquote::*;

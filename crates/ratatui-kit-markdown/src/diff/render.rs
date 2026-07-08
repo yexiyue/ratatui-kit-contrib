@@ -3,37 +3,9 @@ use ratatui_kit::ratatui::{
     text::{Line, Span, Text},
 };
 
+use crate::DiffTheme;
+
 use super::compute::{DiffLine, DiffTag};
-
-/// Diff 渲染配色主题。
-#[derive(Debug, Clone)]
-pub struct DiffTheme {
-    /// 新增行文字颜色
-    pub add_fg: Color,
-    /// 新增行背景色
-    pub add_bg: Color,
-    /// 删除行文字颜色
-    pub remove_fg: Color,
-    /// 删除行背景色
-    pub remove_bg: Color,
-    /// 行号颜色
-    pub line_num: Color,
-    /// 未修改行颜色
-    pub unchanged: Color,
-}
-
-impl Default for DiffTheme {
-    fn default() -> Self {
-        Self {
-            add_fg: Color::Green,
-            add_bg: Color::Rgb(20, 40, 20),
-            remove_fg: Color::Red,
-            remove_bg: Color::Rgb(40, 20, 20),
-            line_num: Color::DarkGray,
-            unchanged: Color::Gray,
-        }
-    }
-}
 
 /// 将 diff 行列表渲染为 ratatui Text。
 pub fn render_diff(
@@ -46,11 +18,13 @@ pub fn render_diff(
         .map(|line| {
             let mut spans = Vec::new();
 
-            let (prefix, fg, bg) = match line.tag {
-                DiffTag::Insert => ("+", theme.add_fg, theme.add_bg),
-                DiffTag::Delete => ("-", theme.remove_fg, theme.remove_bg),
-                DiffTag::Unchanged => (" ", theme.unchanged, Color::Reset),
+            let (prefix, line_style) = match line.tag {
+                DiffTag::Insert => ("+", theme.add_style),
+                DiffTag::Delete => ("-", theme.remove_style),
+                DiffTag::Unchanged => (" ", theme.unchanged_style),
             };
+            let gutter_style = with_bg(theme.line_number_style, line_style.bg);
+            let unchanged_in_line_style = with_bg(theme.unchanged_style, line_style.bg);
 
             if show_line_numbers {
                 let old_str = line
@@ -63,13 +37,10 @@ pub fn render_diff(
                     .unwrap_or_else(|| "    ".to_string());
                 spans.push(Span::styled(
                     format!("{prefix}{old_str}{new_str}"),
-                    Style::new().fg(theme.line_num).bg(bg),
+                    gutter_style,
                 ));
             } else {
-                spans.push(Span::styled(
-                    format!("{prefix} "),
-                    Style::new().fg(fg).bg(bg),
-                ));
+                spans.push(Span::styled(format!("{prefix} "), line_style));
             }
 
             let content = line.content.trim_end_matches('\n');
@@ -84,25 +55,31 @@ pub fn render_diff(
                     if Some(wd.tag) == skip_tag {
                         continue;
                     }
-                    let (w_fg, w_bg) = match wd.tag {
-                        DiffTag::Insert => (theme.add_fg, theme.add_bg),
-                        DiffTag::Delete => (theme.remove_fg, theme.remove_bg),
-                        DiffTag::Unchanged => (theme.unchanged, bg),
+                    let word_style = match wd.tag {
+                        DiffTag::Insert => theme.add_style,
+                        DiffTag::Delete => theme.remove_style,
+                        DiffTag::Unchanged => unchanged_in_line_style,
                     };
-                    spans.push(Span::styled(
-                        wd.text.clone(),
-                        Style::new().fg(w_fg).bg(w_bg),
-                    ));
+                    spans.push(Span::styled(wd.text.clone(), word_style));
                 }
             } else {
-                spans.push(Span::styled(
-                    content.to_string(),
-                    Style::new().fg(fg).bg(bg),
-                ));
+                spans.push(Span::styled(content.to_string(), line_style));
             }
 
             Line::from(spans)
         })
         .collect::<Vec<_>>()
         .into()
+}
+
+/// Fill in the row's highlight background for the gutter/unchanged-in-line
+/// styles, but only when that style doesn't already carry its own `bg` --
+/// otherwise an explicit `line_number_style`/`unchanged_style` override (which
+/// already patched its `bg` via `resolve_style`) would get silently clobbered
+/// back to the row's default bg.
+fn with_bg(mut style: Style, bg: Option<Color>) -> Style {
+    if style.bg.is_none() {
+        style.bg = bg;
+    }
+    style
 }

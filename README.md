@@ -38,7 +38,7 @@ Each crate here:
 - is **independently versioned** and **independently published** to crates.io as
   `ratatui-kit-<name>` (e.g. `ratatui-kit-markdown`);
 - depends on the framework through the public [Extension API](https://github.com/yexiyue/ratatui-kit/blob/main/EXTENSION_API.md)
-  with a version **range** (`ratatui-kit = ">=0.9, <0.10"`), reaching `ratatui` /
+  from the `ratatui-kit = ">=0.10"` baseline, reaching `ratatui` /
   `crossterm` types via `ratatui_kit::ratatui` / `ratatui_kit::crossterm` rather than a
   direct dependency;
 - lives in its own directory under [`crates/`](./crates/) and is released by pushing a
@@ -56,6 +56,7 @@ framework's release cadence and quality bar.
 | Crate | Description | Version | Original author | Feature-gated deps |
 | --- | --- | --- | --- | --- |
 | [`ratatui-kit-markdown`](./crates/ratatui-kit-markdown) | Markdown, code block, diff, blockquote and divider components | `0.1.0` | [KonghaYao](https://github.com/KonghaYao) via [ratatui-kit#12](https://github.com/yexiyue/ratatui-kit/pull/12) | `pulldown-cmark` (`markdown`), `syntect` (`highlight`), `similar` (`diff`) |
+| [`ratatui-kit-themes`](./crates/ratatui-kit-themes) | `ratatui-themes` catalog adapters for the core `Palette` / `PaletteProvider` pipeline | `0.1.0` | yexiyue | — (`ratatui-themes` is a core dep, not feature-gated) |
 
 > As crates land, add a row here and a member entry in the workspace
 > [`Cargo.toml`](./Cargo.toml).
@@ -94,8 +95,8 @@ In short:
 - **Layout props go on the returned root element** for `#[component]` functions
   (transparent-layout wrappers do not own a layout node).
 - **Compile baseline**: all examples and doctests must compile — it is the CI gate.
-- Publish as `ratatui-kit-<name>` with `keywords = ["ratatui-kit", "tui"]` and pin the
-  framework with a version range.
+- Publish as `ratatui-kit-<name>` with `keywords = ["ratatui-kit", "tui"]` and use
+  the workspace `ratatui-kit >=0.10` baseline.
 
 Run the same validation matrix CI uses before opening a PR:
 
@@ -108,14 +109,18 @@ RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --document-private-items --all-fe
 
 ### Recording examples
 
-Example GIFs live inside the crate they demonstrate. For `ratatui-kit-markdown`, each
-package-local tape writes to `crates/ratatui-kit-markdown/assets/`:
+Example GIFs live inside the crate they demonstrate. Each package-local tape
+writes to that crate's `assets/` directory:
 
 ```bash
-for tape in crates/ratatui-kit-markdown/tapes/*.tape; do
+for tape in crates/*/tapes/*.tape; do
     vhs "$tape"
 done
 ```
+
+Tapes may also emit verification screenshots under `target/vhs-*.png`; `target/`
+is ignored, so these PNGs are for local visual checks only. Commit the tape and
+generated GIF when an example output changes.
 
 ### Releasing
 
