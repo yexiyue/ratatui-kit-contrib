@@ -40,6 +40,9 @@ unicode-width = { version = "0.2", optional = true }
 [dev-dependencies]
 # Examples use `#[tokio::main]` + `tokio::time::sleep`; doctests use `#[tokio::main]`.
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
+# Offscreen-render integration tests (mount under a real PaletteProvider, assert
+# rendered cell styles track the injected Palette) -- see EXTENSION_API.md.
+ratatui-kit = { workspace = true, features = ["test-util"] }
 
 [features]
 # Keep the default set minimal but useful: the Markdown renderer is on, heavy
