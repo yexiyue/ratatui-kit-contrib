@@ -1,10 +1,12 @@
 use ratatui_kit::prelude::*;
 use ratatui_kit::ratatui::{
     layout::Alignment,
-    style::{Color, Style},
+    style::{Style},
     text::{Line, Span, Text},
     widgets::{Block, Borders, Paragraph, Widget, Wrap},
 };
+#[cfg(feature = "highlight")]
+use ratatui_kit::ratatui::style::Color;
 
 use crate::theme::{CodeBlockTheme, resolve_style};
 
@@ -53,6 +55,9 @@ pub struct CodeBlockProps<'a> {
     pub language_label_style: Option<Style>,
     /// 是否显示外框边框。默认 true。
     pub show_border: Option<bool>,
+    /// 轻量模式：true 时跳过高亮，走 `build_text_plain()`。
+    /// 用于首帧 fallback，避免 syntect 阻塞 UI 线程。默认 false。
+    pub light: Option<bool>,
     /// 子元素（代码块内部不承载子组件，此字段仅为 Props derive 占位）。
     pub children: Vec<AnyElement<'a>>,
 }
@@ -69,6 +74,7 @@ impl Default for CodeBlockProps<'_> {
             code_style: None,
             border_style: None,
             language_label_style: None,
+            light: None,
             children: Vec::new(),
             margin: Default::default(),
             offset: Default::default(),
@@ -94,6 +100,7 @@ pub struct CodeBlock {
     code_style: Style,
     border_style: Style,
     language_label_style: Style,
+    light: bool,
 }
 
 impl CodeBlock {
@@ -114,6 +121,7 @@ impl CodeBlock {
                 theme.language_label_style,
                 props.language_label_style,
             ),
+            light: props.light.unwrap_or(false),
         }
     }
 
@@ -212,7 +220,11 @@ impl CodeBlock {
     }
 
     fn build_text(&self) -> Text<'static> {
-        self.build_text_highlighted()
+        if self.light {
+            self.build_text_plain()
+        } else {
+            self.build_text_highlighted()
+        }
     }
 }
 
