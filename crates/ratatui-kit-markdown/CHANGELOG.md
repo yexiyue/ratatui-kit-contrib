@@ -5,6 +5,20 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - 2026-07-13
+
+### 🚀 Features
+
+- *(markdown)* Two-phase rendering - first frame light, subsequent frames full syntect (#1)
+
+### 🐛 Bug Fixes
+
+- *(markdown)* 两阶段渲染改用 use_future 主动唤醒第二帧,并恢复 render API 兼容
+
+### 📚 Documentation
+
+- *(markdown)* 加 markdown_two_phase 示例演示两阶段渲染
+- *(markdown)* README 增补 markdown_two_phase 示例与两阶段渲染说明
 ## [0.2.0] - 2026-07-08
 
 ### 🚀 Features
