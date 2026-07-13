@@ -8,3 +8,6 @@ Cargo.lock
 .idea
 .vscode
 .DS_Store
+
+# Skill workspace (generated locally, not committed)
+skills/ratatui-kit-contrib-workspace
