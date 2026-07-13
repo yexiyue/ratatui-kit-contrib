@@ -44,19 +44,23 @@ pub struct RenderedMarkdown {
 /// ```
 #[component]
 pub fn Markdown(mut hooks: Hooks, props: &MarkdownProps) -> impl Into<AnyElement<'static>> {
-    // 获取上一帧的 width（第一帧为 0）
-    let prev = hooks.use_previous_size();
-
     // markdown 解析（纯 pulldown-cmark 事件流 → ParsedBlock，<1ms）
     let parsed = hooks.use_memo(|| parse_markdown(&props.content), props.content.clone());
 
     let theme = hooks.use_component_theme::<MarkdownTheme>();
 
     // 两阶段渲染：
-    //   第一帧 use_previous_size 返回 width=0 → light=true，CodeBlock 跳过高亮，<1ms 立即显示
-    //   第二帧起 width 精确 → light=false，syntect 完整高亮
-    let light = prev.width == 0;
-    let rendered = render_blocks_with_theme(&parsed.blocks, &theme, light);
+    //   首帧 highlighted=false → light=true，CodeBlock 跳过 syntect，<1ms 立即显示；
+    //   use_future 在挂载后必然被 poll 一次，set(true) 主动唤醒一次重渲染；
+    //   第二帧 highlighted=true → light=false，syntect 完整高亮。
+    // 用 state 主动唤醒（而非依赖 use_previous_size：它不写 state、不自唤醒，
+    // 静态内容会永久停在纯文本，直到下一个无关事件才补上高亮）。
+    let mut highlighted = hooks.use_state(|| false);
+    hooks.use_future(async move {
+        highlighted.set(true);
+    });
+    let light = !highlighted.get();
+    let rendered = render_blocks_inner(&parsed.blocks, &theme, light);
 
     element! {
         View(
@@ -395,10 +399,20 @@ fn build_row(row: RenderRow, theme: &MarkdownTheme, light: bool) -> AnyElement<'
 /// `total_height` 即可作为 ScrollView 的内容高度，与渲染输出精确一致
 /// （代码块 / 表格按未换行的逻辑行数计，见 [`RenderedMarkdown::total_height`]）。
 pub fn render_blocks(blocks: &[ParsedBlock]) -> RenderedMarkdown {
-    render_blocks_with_theme(blocks, &MarkdownTheme::default(), false)
+    render_blocks_with_theme(blocks, &MarkdownTheme::default())
 }
 
-pub fn render_blocks_with_theme(blocks: &[ParsedBlock], theme: &MarkdownTheme, light: bool) -> RenderedMarkdown {
+pub fn render_blocks_with_theme(blocks: &[ParsedBlock], theme: &MarkdownTheme) -> RenderedMarkdown {
+    render_blocks_inner(blocks, theme, false)
+}
+
+/// 内部渲染：`light=true` 时代码块跳过 syntect 高亮走纯文本（首帧 fallback）。
+/// `light` 不进入公开 API —— 它只对「同一组件跨帧的两阶段渲染」有意义。
+fn render_blocks_inner(
+    blocks: &[ParsedBlock],
+    theme: &MarkdownTheme,
+    light: bool,
+) -> RenderedMarkdown {
     let rows = render_rows_with_theme(blocks, theme);
     let mut total_height: u16 = 0;
     let mut elements = Vec::with_capacity(rows.len());

@@ -1,12 +1,12 @@
 use ratatui_kit::prelude::*;
+#[cfg(feature = "highlight")]
+use ratatui_kit::ratatui::style::Color;
 use ratatui_kit::ratatui::{
     layout::Alignment,
-    style::{Style},
+    style::Style,
     text::{Line, Span, Text},
     widgets::{Block, Borders, Paragraph, Widget, Wrap},
 };
-#[cfg(feature = "highlight")]
-use ratatui_kit::ratatui::style::Color;
 
 use crate::theme::{CodeBlockTheme, resolve_style};
 
