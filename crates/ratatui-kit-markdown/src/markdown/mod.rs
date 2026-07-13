@@ -14,8 +14,7 @@ use unicode_width::UnicodeWidthStr;
 use crate::MarkdownTheme;
 use crate::{CodeBlock, Divider};
 
-// Re-export the parser types: `render_blocks` (public) takes `&[ParsedBlock]`, so
-// these must be part of the public surface too.
+// Re-export the parser types used by the public API (`render_blocks`, etc.).
 pub use parser::{ListItemData, ParseResult, ParsedBlock, parse_markdown};
 
 #[with_layout_style]
@@ -45,11 +44,20 @@ pub struct RenderedMarkdown {
 /// ```
 #[component]
 pub fn Markdown(mut hooks: Hooks, props: &MarkdownProps) -> impl Into<AnyElement<'static>> {
-    // 用 use_memo 缓存解析结果，只有 content 变化时才重新解析。
-    // render_blocks 每帧调用（开销很小，只遍历 blocks + clone Span）。
+    // 获取上一帧的 width（第一帧为 0）
+    let prev = hooks.use_previous_size();
+
+    // markdown 解析（纯 pulldown-cmark 事件流 → ParsedBlock，<1ms）
     let parsed = hooks.use_memo(|| parse_markdown(&props.content), props.content.clone());
+
     let theme = hooks.use_component_theme::<MarkdownTheme>();
-    let rendered = render_blocks_with_theme(&parsed.blocks, &theme);
+
+    // 两阶段渲染：
+    //   第一帧 use_previous_size 返回 width=0 → light=true，CodeBlock 跳过高亮，<1ms 立即显示
+    //   第二帧起 width 精确 → light=false，syntect 完整高亮
+    let light = prev.width == 0;
+    let rendered = render_blocks_with_theme(&parsed.blocks, &theme, light);
+
     element! {
         View(
             flex_direction: Direction::Vertical,
@@ -326,7 +334,7 @@ pub(crate) fn render_rows_with_theme(
 }
 
 /// 把一个渲染行构造成 `AnyElement`。
-fn build_row(row: RenderRow, theme: &MarkdownTheme) -> AnyElement<'static> {
+fn build_row(row: RenderRow, theme: &MarkdownTheme, light: bool) -> AnyElement<'static> {
     match row {
         RenderRow::Line(line) => element! {
             View(height: Constraint::Length(1)) {
@@ -348,6 +356,7 @@ fn build_row(row: RenderRow, theme: &MarkdownTheme) -> AnyElement<'static> {
                     lang: lang,
                     show_border: false,
                     show_line_numbers: false,
+                    light: Some(light),
                     height: Constraint::Length(line_count),
                 )
             }
@@ -386,16 +395,16 @@ fn build_row(row: RenderRow, theme: &MarkdownTheme) -> AnyElement<'static> {
 /// `total_height` 即可作为 ScrollView 的内容高度，与渲染输出精确一致
 /// （代码块 / 表格按未换行的逻辑行数计，见 [`RenderedMarkdown::total_height`]）。
 pub fn render_blocks(blocks: &[ParsedBlock]) -> RenderedMarkdown {
-    render_blocks_with_theme(blocks, &MarkdownTheme::default())
+    render_blocks_with_theme(blocks, &MarkdownTheme::default(), false)
 }
 
-pub fn render_blocks_with_theme(blocks: &[ParsedBlock], theme: &MarkdownTheme) -> RenderedMarkdown {
+pub fn render_blocks_with_theme(blocks: &[ParsedBlock], theme: &MarkdownTheme, light: bool) -> RenderedMarkdown {
     let rows = render_rows_with_theme(blocks, theme);
     let mut total_height: u16 = 0;
     let mut elements = Vec::with_capacity(rows.len());
     for row in rows {
         total_height = total_height.saturating_add(row.height());
-        elements.push(build_row(row, theme));
+        elements.push(build_row(row, theme, light));
     }
     RenderedMarkdown {
         elements,
