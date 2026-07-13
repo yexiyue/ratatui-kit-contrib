@@ -69,5 +69,9 @@ name = "markdown_streaming"
 required-features = ["markdown"]
 
 [[example]]
+name = "markdown_two_phase"
+required-features = ["markdown"]
+
+[[example]]
 name = "diff_viewer"
 required-features = ["diff"]
