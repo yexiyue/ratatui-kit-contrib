@@ -55,7 +55,7 @@ framework's release cadence and quality bar.
 
 | Crate | Description | Version | Original author | Feature-gated deps |
 | --- | --- | --- | --- | --- |
-| [`ratatui-kit-markdown`](./crates/ratatui-kit-markdown) | Markdown, code block, diff, blockquote and divider components | `0.2.0` | [KonghaYao](https://github.com/KonghaYao) via [ratatui-kit#12](https://github.com/yexiyue/ratatui-kit/pull/12) | `pulldown-cmark` (`markdown`), `syntect` (`highlight`), `similar` (`diff`) |
+| [`ratatui-kit-markdown`](./crates/ratatui-kit-markdown) | Markdown, code block, diff, blockquote and divider components | `0.3.0` | [KonghaYao](https://github.com/KonghaYao) via [ratatui-kit#12](https://github.com/yexiyue/ratatui-kit/pull/12) | `pulldown-cmark` (`markdown`), `syntect` (`highlight`), `similar` (`diff`) |
 | [`ratatui-kit-themes`](./crates/ratatui-kit-themes) | `ratatui-themes` catalog adapters for the core `Palette` / `PaletteProvider` pipeline | `0.1.0` | yexiyue | — (`ratatui-themes` is a core dep, not feature-gated) |
 
 > As crates land, add a row here and a member entry in the workspace

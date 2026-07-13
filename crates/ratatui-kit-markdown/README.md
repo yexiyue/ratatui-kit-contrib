@@ -26,6 +26,7 @@ from the real `markdown` example and committed as `assets/markdown.gif` next to 
 | --- | --- | --- |
 | `markdown` | ![markdown](https://raw.githubusercontent.com/yexiyue/ratatui-kit-contrib/main/crates/ratatui-kit-markdown/assets/markdown.gif) | [`markdown.tape`](./tapes/markdown.tape) |
 | `markdown_streaming` | ![markdown_streaming](https://raw.githubusercontent.com/yexiyue/ratatui-kit-contrib/main/crates/ratatui-kit-markdown/assets/markdown-streaming.gif) | [`markdown-streaming.tape`](./tapes/markdown-streaming.tape) |
+| `markdown_two_phase` | ![markdown_two_phase](https://raw.githubusercontent.com/yexiyue/ratatui-kit-contrib/main/crates/ratatui-kit-markdown/assets/markdown-two-phase.gif) | [`markdown-two-phase.tape`](./tapes/markdown-two-phase.tape) |
 | `code_block` | ![code_block](https://raw.githubusercontent.com/yexiyue/ratatui-kit-contrib/main/crates/ratatui-kit-markdown/assets/code-block.gif) | [`code-block.tape`](./tapes/code-block.tape) |
 | `diff_viewer` | ![diff_viewer](https://raw.githubusercontent.com/yexiyue/ratatui-kit-contrib/main/crates/ratatui-kit-markdown/assets/diff-viewer.gif) | [`diff-viewer.tape`](./tapes/diff-viewer.tape) |
 | `blockquote` | ![blockquote](https://raw.githubusercontent.com/yexiyue/ratatui-kit-contrib/main/crates/ratatui-kit-markdown/assets/blockquote.gif) | [`blockquote.tape`](./tapes/blockquote.tape) |
@@ -56,7 +57,7 @@ stays light:
 ```toml
 [dependencies]
 # Markdown with highlighted code fences:
-ratatui-kit-markdown = { version = "0.1", features = ["markdown-highlight"] }
+ratatui-kit-markdown = { version = "0.3", features = ["markdown-highlight"] }
 ```
 
 ## Theming
@@ -108,11 +109,22 @@ runnable demos:
 ```bash
 cargo run --example markdown --features markdown-highlight
 cargo run --example markdown_streaming --features markdown
+cargo run --example markdown_two_phase --features markdown-highlight
 cargo run --example code_block --features highlight
 cargo run --example diff_viewer --features diff
 cargo run --example blockquote
 cargo run --example divider
 ```
+
+## Two-phase rendering
+
+`Markdown` renders code fences in two phases. The first frame skips syntect
+highlighting (plain text, <1 ms) so streaming output appears instantly; a
+`use_future` then wakes a second frame that applies full syntax highlighting.
+Because `ratatui-kit` only redraws on demand, that second frame is triggered
+actively — so a **static** document (no key press, no scroll) still ends up
+highlighted instead of being stuck on the first plain-text frame. The
+`markdown_two_phase` example highlights with zero interaction.
 
 ## Record example GIFs
 
