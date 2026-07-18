@@ -17,19 +17,39 @@ crate SHALL 提供对 action 枚举泛型的 `Keymap<A>` builder：`bind(action,
 `Keymap<A>` SHALL 提供合并接口：接受 serde 反序列化得到的用户覆盖（action 名 → 键位字符串列表），用户写了的 action 以其键列表整体替换默认，未写的 action MUST 保持默认。action 的配置键名 MUST 取自 serde 变体名（宿主经 `#[serde(rename_all)]` 控制风格）。
 
 #### Scenario: 部分覆盖
-- **WHEN** 用户覆盖仅包含 `page_down = ["ctrl+d"]`
-- **THEN** 合并后 `page_down` 仅绑定 ctrl+d（默认键不再生效），其余 action 保持默认键位
+- **WHEN** 用户覆盖仅包含 `page_down = ["ctrl-d"]`
+- **THEN** 合并后 `page_down` 仅绑定 ctrl-d（默认键不再生效），其余 action 保持默认键位
 
 #### Scenario: 一个 action 多个键
-- **WHEN** 用户覆盖写 `page_down = ["ctrl+d", "space"]`
+- **WHEN** 用户覆盖写 `page_down = ["ctrl-d", "space"]`
 - **THEN** 合并后两个键都反查命中该 action
 
+#### Scenario: 空列表显式解绑
+- **WHEN** 用户覆盖写 `quit = []`
+- **THEN** 该 action 解除全部绑定(键列表为空、帮助显示无键),不产生告警;宿主可对关键 action 自行检查键列表兜底
+
+#### Scenario: 大写字母隐含 shift
+- **WHEN** 用户覆盖或默认表写单个大写字母(如 `"G"`、`"ctrl-G"`)
+- **THEN** 视为 shift 意图(等价 `"shift-g"`),终端送来的 Shift+G 事件命中;同一 action 内重复键去重、不误报冲突
+
 ### Requirement: 合并校验产出结构化告警且不中断
-合并 SHALL 校验用户覆盖并返回结构化告警列表（而非 Err/panic）：键位字符串解析失败 → 该 action 整条回退默认（`ParseError`）；合并后同表两 action 同键 → 冲突的用户覆盖整条回退默认（`Conflict`）；action 名不存在 → 忽略该条（`UnknownAction`）。任何非法输入 MUST NOT 使合并失败或破坏其余合法条目。
+合并 SHALL 校验用户覆盖并返回结构化告警列表（而非 Err/panic）：键位字符串解析失败或为多键 chord → 该 action 整条回退**默认**（`ParseError`，即使此前某次 merge 曾覆盖过该 action）；值类型不对（非字符串/字符串列表，如 `quit = 3`）→ 该 action 回退默认（`InvalidEntry`）；合并后同表两 action 同键 → 冲突的用户覆盖整条回退默认（`Conflict`）；action 名不存在 → 忽略该条（`UnknownAction`）。任何非法输入 MUST NOT 使合并失败或破坏其余合法条目（TOML 便捷层仅在文件**语法**错误时返回 Err）。告警枚举 MUST 标注 `#[non_exhaustive]` 以便后续增补不破坏下游。
 
 #### Scenario: 非法键位字符串
 - **WHEN** 用户覆盖中某 action 的键位字符串无法解析
 - **THEN** 该 action 回退默认键位，返回含 `ParseError` 的告警，其余条目正常合并
+
+#### Scenario: 值类型错误
+- **WHEN** 用户覆盖写 `quit = 3`（或其他非字符串/列表类型），同文件另有合法覆盖
+- **THEN** 仅 `quit` 回退默认并返回 `InvalidEntry` 告警，其余合法覆盖照常生效
+
+#### Scenario: 多键 chord 拒绝
+- **WHEN** 用户覆盖写 `top = "g-g"`（crokey 可解析但事件侧永远只产生单码组合）
+- **THEN** 该 action 回退默认并返回 `ParseError` 告警，不产生永不命中的死绑定
+
+#### Scenario: shift+标点跨平台归一化
+- **WHEN** 用户绑定 `"?"`，Windows 终端送来带 SHIFT 的 `?` 事件而 Unix 不带
+- **THEN** 入表与查询两侧统一归一化（单字符非字母剥 SHIFT），两个平台都命中
 
 #### Scenario: 覆盖引入冲突
 - **WHEN** 用户把两个 action 覆盖到同一键
@@ -47,8 +67,8 @@ crate SHALL 提供对 action 枚举泛型的 `Keymap<A>` builder：`bind(action,
 - **THEN** 该键有绑定时返回对应 action，无绑定时返回 None
 
 #### Scenario: 描述反映用户覆盖
-- **WHEN** 用户把某 action 覆盖为 ctrl+d 后请求其键名描述
-- **THEN** 返回的字符串列表为 ctrl+d 的格式化结果，而非默认键
+- **WHEN** 用户把某 action 覆盖为 ctrl-d 后请求其键名描述
+- **THEN** 返回的字符串列表为 ctrl-d 的格式化结果，而非默认键
 
 ### Requirement: 导出带注释的示例配置
 `toml` feature 下 `Keymap<A>` SHALL 提供 `to_toml_example()`：从默认表生成完整示例配置文本，包含全部 action 的键名、默认键位与 desc 注释，用户可直接以其为模板修改。
