@@ -20,4 +20,4 @@
 ## 4. 文档与发布
 
 - [x] 4.1 README（定位、快速上手、「serde 变体名是配置契约」、crossterm 版本约束、与 TRNovel#49 的消费关系）+ rustdoc（`RUSTDOCFLAGS="-D warnings"` 过）
-- [ ] 4.2 全套检查（test/clippy/fmt/doc）绿后发布 `ratatui-kit-keymap 0.1.0`，通知 TRNovel 侧 change `configurable-keybindings` 可开工
+- [x] 4.2 全套检查（test/clippy/fmt/doc）绿后发布 `ratatui-kit-keymap 0.1.0`，通知 TRNovel 侧 change `configurable-keybindings` 可开工
