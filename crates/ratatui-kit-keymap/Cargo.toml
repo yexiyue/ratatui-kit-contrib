@@ -1,0 +1,29 @@
+[package]
+name = "ratatui-kit-keymap"
+version = "0.1.0"
+description = "Configurable keybindings for ratatui-kit apps: generic keymap with defaults, user overrides, validation and an action-dispatch hook"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+readme = "README.md"
+keywords = ["ratatui-kit", "keybindings", "keymap", "tui", "crossterm"]
+categories = ["command-line-interface"]
+
+[features]
+default = ["toml"]
+toml = ["dep:toml"]
+
+[dependencies]
+ratatui-kit = { workspace = true }
+crokey = "1.4"
+serde = { version = "1", features = ["derive"] }
+toml = { version = "0.9", optional = true }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
+
+[[example]]
+name = "keymap_demo"
+required-features = ["toml"]
